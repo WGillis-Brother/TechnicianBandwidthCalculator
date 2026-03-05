@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Technician Bandwidth Calculator</title>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: #121a2b;
+      --panel-2: #1a243a;
+      --text: #e8eefc;
+      --muted: #a6b2cc;
+      --accent: #5fa8ff;
+      --good: #27c281;
+      --warn: #ffc857;
+      --bad: #ff6b6b;
+      --border: #2a3654;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(180deg, #080d18 0%, #101a2d 100%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .container {
+      width: min(1100px, 96vw);
+      margin: 24px auto;
+      display: grid;
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 1.55rem;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin: 0;
+      font-size: 0.95rem;
+    }
+
+    h2 {
+      margin-top: 0;
+      font-size: 1.05rem;
+      letter-spacing: 0.2px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(120px, 1fr));
+      gap: 10px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+
+    input[type="number"],
+    select,
+    input[type="text"] {
+      width: 100%;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 9px 10px;
+      outline: none;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(95, 168, 255, 0.2);
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    button {
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    button:hover { filter: brightness(1.08); }
+
+    .primary {
+      background: #264a7d;
+      border-color: #325f9e;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      overflow: hidden;
+      border-radius: 10px;
+    }
+
+    th, td {
+      border-bottom: 1px solid var(--border);
+      padding: 10px 8px;
+      text-align: left;
+      font-size: 0.92rem;
+      vertical-align: middle;
+    }
+
+    th { color: var(--muted); font-weight: 600; }
+
+    .num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(160px, 1fr));
+      gap: 10px;
+    }
+
+    .metric {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+    }
+
+    .metric .label {
+      color: var(--muted);
+      font-size: 0.8rem;
+      margin-bottom: 4px;
+    }
+
+    .metric .value {
+      font-size: 1.3rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .status-good { color: var(--good); }
+    .status-warn { color: var(--warn); }
+    .status-bad { color: var(--bad); }
+
+    .insights {
+      margin: 8px 0 0;
+      padding-left: 18px;
+      color: var(--muted);
+    }
+
+    .footnote {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .pool-models {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(130px, 1fr));
+      gap: 4px 8px;
+      padding: 4px 2px;
+    }
+
+    .pool-model-option {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.82rem;
+      color: var(--text);
+    }
+
+    .pool-model-option input[type="checkbox"] {
+      width: auto;
+      margin: 0;
+    }
+
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: repeat(2, minmax(140px, 1fr)); }
+      .metrics { grid-template-columns: repeat(2, minmax(140px, 1fr)); }
+    }
+
+    @media (max-width: 620px) {
+      .metrics { grid-template-columns: 1fr; }
+      table.machine-table th:nth-child(5),
+      table.machine-table td:nth-child(5) { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <section class="card">
+      <h1>Technician Bandwidth Calculator</h1>
+      <p class="subtitle">Plan technician capacity across machine installs and service visits by pool.</p>
+    </section>
+
+    <section class="card">
+      <h2>Staffing & Work Assumptions</h2>
+      <div class="grid">
+        <div>
+          <label for="totalTechnicians"># Technicians (From Pools)</label>
+          <input id="totalTechnicians" type="number" value="0" readonly />
+        </div>
+        <div>
+          <label for="periodMonths">Planning Horizon (Months)</label>
+          <input id="periodMonths" type="number" min="1" value="1" />
+        </div>
+        <div>
+          <label for="workdaysPerWeek">Work Days / Week</label>
+          <input id="workdaysPerWeek" type="number" min="1" max="7" value="5" />
+        </div>
+        <div>
+          <label for="weeksPerMonth">Weeks / Month</label>
+          <input id="weeksPerMonth" type="number" min="1" max="6" value="4" />
+        </div>
+        <div>
+          <label for="weeksOut">Weeks Out of Field / Month</label>
+          <input id="weeksOut" type="number" min="1" max="4" value="1" />
+        </div>
+        <div>
+          <label for="efficiency">Field Efficiency (%)</label>
+          <input id="efficiency" type="number" min="1" max="100" value="85" />
+        </div>
+      </div>
+      <p class="footnote">Efficiency accounts for travel, admin, and unplanned delays. 85% is a practical default for scheduling.</p>
+    </section>
+
+    <section class="card">
+      <h2>Technician Pools</h2>
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 36%;">Pool Name</th>
+            <th class="num" style="width: 16%;"># Technicians</th>
+            <th style="width: 40%;">Trained Models (Checkboxes)</th>
+            <th style="width: 8%;"></th>
+          </tr>
+        </thead>
+        <tbody id="poolsBody"></tbody>
+      </table>
+
+      <div class="toolbar">
+        <button id="addPool" class="primary" type="button">+ Add Pool</button>
+      </div>
+      <p class="footnote">Check all models each pool is trained on. Leave unchecked for a general pool that can take any model.</p>
+    </section>
+
+    <section class="card">
+      <h2>Machine Models & Sales Forecast</h2>
+      <table class="machine-table">
+        <thead>
+          <tr>
+            <th style="width: 30%;">Machine Model</th>
+            <th style="width: 22%;">Assigned Pool</th>
+            <th class="num" style="width: 15%;">Install Time (Days)</th>
+            <th class="num" style="width: 15%;">Projected Sales</th>
+            <th class="num" style="width: 12%;">Tech-Days Needed</th>
+            <th style="width: 6%;"></th>
+          </tr>
+        </thead>
+        <tbody id="modelsBody"></tbody>
+      </table>
+
+      <div class="toolbar">
+        <button id="addModel" class="primary" type="button">+ Add Model</button>
+        <button id="loadExample" type="button">Load Example</button>
+        <button id="clearAll" type="button">Clear All Rows</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Service Visits Forecast</h2>
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 34%;">Service Type</th>
+            <th style="width: 22%;">Assigned Pool</th>
+            <th class="num" style="width: 16%;">Days Needed</th>
+            <th class="num" style="width: 16%;">Projected Visits</th>
+            <th class="num" style="width: 10%;">Tech-Days Needed</th>
+            <th style="width: 2%;"></th>
+          </tr>
+        </thead>
+        <tbody id="serviceBody"></tbody>
+      </table>
+
+      <div class="toolbar">
+        <button id="addService" class="primary" type="button">+ Add Service Visit</button>
+        <button id="clearService" type="button">Clear Service Rows</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Capacity Results</h2>
+      <div class="metrics">
+        <div class="metric">
+          <div class="label">Total Tech-Days Required</div>
+          <div class="value" id="requiredDays">0</div>
+        </div>
+        <div class="metric">
+          <div class="label">Total Tech-Days Available</div>
+          <div class="value" id="availableDays">0</div>
+        </div>
+        <div class="metric">
+          <div class="label">Utilization</div>
+          <div class="value" id="utilization">0%</div>
+        </div>
+        <div class="metric">
+          <div class="label">Recommended Technicians</div>
+          <div class="value" id="recommendedTechs">0</div>
+        </div>
+      </div>
+
+      <div class="metrics" style="margin-top: 10px;">
+        <div class="metric">
+          <div class="label" id="gapLabel">Remaining Tech Days</div>
+          <div class="value" id="gap">0</div>
+        </div>
+        <div class="metric">
+          <div class="label">Projected Total Installs</div>
+          <div class="value" id="totalInstalls">0</div>
+        </div>
+        <div class="metric">
+          <div class="label">Projected Service Visits</div>
+          <div class="value" id="totalServiceVisits">0</div>
+        </div>
+        <div class="metric">
+          <div class="label">Avg Work Orders / Tech (Period)</div>
+          <div class="value" id="workOrdersPerTech">0</div>
+        </div>
+      </div>
+
+      <ul class="insights" id="insights"></ul>
+      <p class="footnote">Required tech-days = installs Σ(days × projected sales) + services Σ(days × projected visits).</p>
+
+      <h2 style="margin-top: 14px;">Pool Utilization Summary</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Pool</th>
+            <th class="num">Required Tech-Days</th>
+            <th class="num">Available Tech-Days</th>
+            <th class="num"><span class="status-good">Remaining</span> / <span class="status-bad">Needed</span> Tech Days</th>
+            <th class="num">Utilization</th>
+          </tr>
+        </thead>
+        <tbody id="poolSummaryBody"></tbody>
+      </table>
+    </section>
+  </div>
+
+  <script>
+    const modelsBody = document.getElementById('modelsBody');
+    const serviceBody = document.getElementById('serviceBody');
+    const poolsBody = document.getElementById('poolsBody');
+    const predefinedModels = [
+      'DTRX',
+      'GTXpro',
+      'GTXpro Bulk',
+      'GTX-600',
+      'GTX-300',
+      'DL 2200',
+      'DL 2400'
+    ];
+    const customModelToken = '__OTHER__';
+    const customTrainedModelToken = '__CUSTOM_MODEL__';
+    let poolCounter = 0;
+    const fields = {
+      totalTechnicians: document.getElementById('totalTechnicians'),
+      periodMonths: document.getElementById('periodMonths'),
+      workdaysPerWeek: document.getElementById('workdaysPerWeek'),
+      weeksPerMonth: document.getElementById('weeksPerMonth'),
+      weeksOut: document.getElementById('weeksOut'),
+      efficiency: document.getElementById('efficiency')
+    };
+
+    const output = {
+      requiredDays: document.getElementById('requiredDays'),
+      availableDays: document.getElementById('availableDays'),
+      utilization: document.getElementById('utilization'),
+      recommendedTechs: document.getElementById('recommendedTechs'),
+      gapLabel: document.getElementById('gapLabel'),
+      gap: document.getElementById('gap'),
+      totalInstalls: document.getElementById('totalInstalls'),
+      totalServiceVisits: document.getElementById('totalServiceVisits'),
+      workOrdersPerTech: document.getElementById('workOrdersPerTech'),
+      poolSummaryBody: document.getElementById('poolSummaryBody'),
+      insights: document.getElementById('insights')
+    };
+
+    function toNumber(value, fallback = 0) {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : fallback;
+    }
+
+    function formatNumber(value, digits = 1) {
+      return Number(value).toLocaleString(undefined, {
+        minimumFractionDigits: digits,
+        maximumFractionDigits: digits
+      });
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function createModelOptions(selectedModel = '') {
+      const safeSelected = selectedModel.trim();
+      const hasPreset = predefinedModels.includes(safeSelected);
+      const optionItems = ['<option value="">Select model...</option>']
+        .concat(
+          predefinedModels.map(model => {
+            const selected = model === safeSelected ? 'selected' : '';
+            return `<option value="${escapeHtml(model)}" ${selected}>${escapeHtml(model)}</option>`;
+          })
+        )
+        .concat(`<option value="${customModelToken}" ${!hasPreset && safeSelected ? 'selected' : ''}>Unknown / Other...</option>`);
+
+      return optionItems.join('');
+    }
+
+    function createPoolModelTrainingCheckboxes(selectedModels = []) {
+      const selected = new Set(selectedModels);
+      return predefinedModels
+        .map(model => `
+          <label class="pool-model-option">
+            <input type="checkbox" class="pool-model-item" value="${escapeHtml(model)}" ${selected.has(model) ? 'checked' : ''} />
+            <span>${escapeHtml(model)}</span>
+          </label>
+        `)
+        .concat(`
+          <label class="pool-model-option">
+            <input type="checkbox" class="pool-model-item" value="${customTrainedModelToken}" ${selected.has(customTrainedModelToken) ? 'checked' : ''} />
+            <span>Unknown / Custom Models</span>
+          </label>
+        `)
+        .join('');
+    }
+
+    function getRowModelValue(tr) {
+      const modelSelect = tr.querySelector('.model-select');
+      const customModelInput = tr.querySelector('.custom-model');
+      return modelSelect.value === customModelToken
+        ? customModelInput.value.trim()
+        : modelSelect.value.trim();
+    }
+
+    function getPools() {
+      return [...poolsBody.querySelectorAll('tr')].map(tr => {
+        const poolNameInput = tr.querySelector('.pool-name');
+        const poolTechInput = tr.querySelector('.pool-techs');
+        return {
+          id: tr.dataset.poolId,
+          name: poolNameInput.value.trim() || `Pool ${tr.dataset.poolId}`,
+          techs: Math.max(0, toNumber(poolTechInput.value)),
+          trainedModels: [...tr.querySelectorAll('.pool-model-item:checked')].map(input => input.value)
+        };
+      });
+    }
+
+    function isPoolEligibleForModel(pool, modelValue) {
+      if (!modelValue) {
+        return true;
+      }
+
+      if (!pool.trainedModels || pool.trainedModels.length === 0) {
+        return true;
+      }
+
+      if (predefinedModels.includes(modelValue)) {
+        return pool.trainedModels.includes(modelValue);
+      }
+
+      return pool.trainedModels.includes(customTrainedModelToken);
+    }
+
+    function createPoolOptions(selectedPoolId = '', rowModel = '') {
+      const pools = getPools();
+      const options = ['<option value="">Unassigned</option>'].concat(
+        pools.filter(pool => isPoolEligibleForModel(pool, rowModel)).map(pool => {
+          const selected = pool.id === selectedPoolId ? 'selected' : '';
+          return `<option value="${escapeHtml(pool.id)}" ${selected}>${escapeHtml(pool.name)}</option>`;
+        })
+      );
+
+      return options.join('');
+    }
+
+    function refreshPoolDropdowns() {
+      [...modelsBody.querySelectorAll('tr')].forEach(tr => {
+        const poolSelect = tr.querySelector('.pool-select');
+        const previousValue = poolSelect.value;
+        const rowModel = getRowModelValue(tr);
+        poolSelect.innerHTML = createPoolOptions(previousValue, rowModel);
+        if (![...poolSelect.options].some(opt => opt.value === previousValue)) {
+          poolSelect.value = '';
+        }
+      });
+
+      [...serviceBody.querySelectorAll('tr')].forEach(tr => {
+        const poolSelect = tr.querySelector('.service-pool-select');
+        const previousValue = poolSelect.value;
+        poolSelect.innerHTML = createPoolOptions(previousValue);
+        if (![...poolSelect.options].some(opt => opt.value === previousValue)) {
+          poolSelect.value = '';
+        }
+      });
+    }
+
+    function addPool(name = '', techs = 0, trainedModels = []) {
+      poolCounter += 1;
+      const poolId = `pool-${poolCounter}`;
+      const tr = document.createElement('tr');
+      tr.dataset.poolId = poolId;
+
+      tr.innerHTML = `
+        <td style="width: 36%;"><input type="text" class="pool-name" placeholder="e.g., Core Install Team" value="${escapeHtml(name)}" /></td>
+        <td style="width: 16%;"><input type="number" min="0" step="1" class="pool-techs num-input" value="${techs}" /></td>
+        <td style="width: 40%;"><div class="pool-models">${createPoolModelTrainingCheckboxes(trainedModels)}</div></td>
+        <td><button type="button">✕</button></td>
+      `;
+
+      tr.querySelector('.pool-name').addEventListener('input', () => {
+        refreshPoolDropdowns();
+        calculate();
+      });
+      tr.querySelector('.pool-techs').addEventListener('input', calculate);
+      tr.querySelector('.pool-models').addEventListener('change', () => {
+        refreshPoolDropdowns();
+        calculate();
+      });
+      tr.querySelector('button').addEventListener('click', () => {
+        tr.remove();
+        if (poolsBody.children.length === 0) {
+          addPool('General Pool', 0, []);
+        }
+        refreshPoolDropdowns();
+        calculate();
+      });
+
+      poolsBody.appendChild(tr);
+      refreshPoolDropdowns();
+      return poolId;
+    }
+
+    function addRow(model = '', installDays = 0, sales = 0, poolId = '') {
+      const tr = document.createElement('tr');
+      const hasPreset = predefinedModels.includes((model || '').trim());
+      const customValue = hasPreset ? '' : (model || '').trim();
+      const defaultPoolId = poolId || (getPools()[0] ? getPools()[0].id : '');
+      const rowModel = (model || '').trim();
+
+      tr.innerHTML = `
+        <td>
+          <select class="model-select">${createModelOptions(model)}</select>
+          <input
+            type="text"
+            class="custom-model"
+            placeholder="Enter unknown model"
+            value="${escapeHtml(customValue)}"
+            style="margin-top: 6px; display: ${customValue ? 'block' : 'none'};"
+          />
+        </td>
+        <td><select class="pool-select">${createPoolOptions(defaultPoolId, rowModel)}</select></td>
+        <td><input type="number" min="0" step="0.25" value="${installDays}" class="num-input" /></td>
+        <td><input type="number" min="0" step="1" value="${sales}" class="num-input" /></td>
+        <td class="num row-tech-days">0</td>
+        <td><button type="button">✕</button></td>
+      `;
+
+      const selectInput = tr.querySelector('.model-select');
+      const customModelInput = tr.querySelector('.custom-model');
+      const poolSelect = tr.querySelector('.pool-select');
+      const inputs = tr.querySelectorAll('input');
+      inputs.forEach(input => input.addEventListener('input', calculate));
+      poolSelect.addEventListener('change', calculate);
+      selectInput.addEventListener('change', () => {
+        const showCustom = selectInput.value === customModelToken;
+        customModelInput.style.display = showCustom ? 'block' : 'none';
+        if (!showCustom) {
+          customModelInput.value = '';
+        }
+        refreshPoolDropdowns();
+        calculate();
+      });
+      customModelInput.addEventListener('input', refreshPoolDropdowns);
+
+      tr.querySelector('button').addEventListener('click', () => {
+        tr.remove();
+        if (modelsBody.children.length === 0) {
+          addRow();
+        }
+        calculate();
+      });
+
+      modelsBody.appendChild(tr);
+    }
+
+    function addServiceRow(serviceType = '', daysNeeded = 0.5, projectedVisits = 0, poolId = '') {
+      const tr = document.createElement('tr');
+      const defaultPoolId = poolId || (getPools()[0] ? getPools()[0].id : '');
+
+      tr.innerHTML = `
+        <td><input type="text" class="service-type" placeholder="e.g., Preventive Maintenance" value="${escapeHtml(serviceType)}" /></td>
+        <td><select class="service-pool-select">${createPoolOptions(defaultPoolId)}</select></td>
+        <td><input type="number" min="0" step="0.25" value="${daysNeeded}" class="service-days num-input" /></td>
+        <td><input type="number" min="0" step="1" value="${projectedVisits}" class="service-count num-input" /></td>
+        <td class="num service-tech-days">0</td>
+        <td><button type="button">✕</button></td>
+      `;
+
+      tr.querySelectorAll('input').forEach(input => input.addEventListener('input', calculate));
+      tr.querySelector('.service-pool-select').addEventListener('change', calculate);
+      tr.querySelector('button').addEventListener('click', () => {
+        tr.remove();
+        if (serviceBody.children.length === 0) {
+          addServiceRow();
+        }
+        calculate();
+      });
+
+      serviceBody.appendChild(tr);
+    }
+
+    function getRows() {
+      return [...modelsBody.querySelectorAll('tr')].map(tr => {
+        const modelSelect = tr.querySelector('.model-select');
+        const customModelInput = tr.querySelector('.custom-model');
+        const installInput = tr.querySelector('input[type="number"][step="0.25"]');
+        const salesInput = tr.querySelector('input[type="number"][step="1"]');
+        const model = modelSelect.value === customModelToken
+          ? customModelInput.value.trim()
+          : modelSelect.value.trim();
+
+        return {
+          tr,
+          model,
+          poolId: tr.querySelector('.pool-select').value,
+          installDays: Math.max(0, toNumber(installInput.value)),
+          sales: Math.max(0, toNumber(salesInput.value))
+        };
+      });
+    }
+
+    function getServiceRows() {
+      return [...serviceBody.querySelectorAll('tr')].map(tr => {
+        const serviceTypeInput = tr.querySelector('.service-type');
+        const daysInput = tr.querySelector('.service-days');
+        const countInput = tr.querySelector('.service-count');
+
+        return {
+          tr,
+          serviceType: serviceTypeInput.value.trim(),
+          poolId: tr.querySelector('.service-pool-select').value,
+          daysNeeded: Math.max(0, toNumber(daysInput.value)),
+          projectedVisits: Math.max(0, toNumber(countInput.value))
+        };
+      });
+    }
+
+    function renderPoolSummary(poolStats, unassignedDemand = 0) {
+      if (!poolStats.length) {
+        output.poolSummaryBody.innerHTML = '<tr><td colspan="5">No pools configured.</td></tr>';
+        return;
+      }
+
+      const summaryRows = poolStats.map(pool => {
+        const utilization = pool.available > 0 ? (pool.required / pool.available) * 100 : 0;
+        const gap = pool.available - pool.required;
+        const utilizationClass = utilization <= 85 ? 'status-good' : utilization <= 100 ? 'status-warn' : 'status-bad';
+        const gapClass = gap >= 0 ? 'status-good' : 'status-bad';
+
+        return `
+          <tr>
+            <td>${escapeHtml(pool.name)}</td>
+            <td class="num">${formatNumber(pool.required, 1)}</td>
+            <td class="num">${formatNumber(pool.available, 1)}</td>
+            <td class="num ${gapClass}">${formatNumber(Math.abs(gap), 1)}</td>
+            <td class="num ${utilizationClass}">${formatNumber(utilization, 1)}%</td>
+          </tr>
+        `;
+      });
+
+      if (unassignedDemand > 0) {
+        summaryRows.push(`
+          <tr>
+            <td>Unassigned Work</td>
+            <td class="num">${formatNumber(unassignedDemand, 1)}</td>
+            <td class="num">0.0</td>
+            <td class="num status-bad">${formatNumber(unassignedDemand, 1)}</td>
+            <td class="num status-bad">N/A</td>
+          </tr>
+        `);
+      }
+
+      output.poolSummaryBody.innerHTML = summaryRows.join('');
+    }
+
+    function calculate() {
+      const pools = getPools();
+      const technicians = pools.reduce((sum, pool) => sum + pool.techs, 0);
+      const periodMonths = Math.max(1, toNumber(fields.periodMonths.value, 1));
+      const workdaysPerWeek = Math.max(1, toNumber(fields.workdaysPerWeek.value, 5));
+      const weeksPerMonth = Math.max(1, toNumber(fields.weeksPerMonth.value, 4));
+      const weeksOut = Math.max(1, toNumber(fields.weeksOut.value, 1));
+      const efficiency = Math.min(100, Math.max(1, toNumber(fields.efficiency.value, 85)));
+
+      const effectiveWeeks = Math.max(0, weeksPerMonth - weeksOut);
+      const availablePerTechPerMonth = effectiveWeeks * workdaysPerWeek * (efficiency / 100);
+      const perPoolCapacity = new Map(
+        pools.map(pool => [
+          pool.id,
+          {
+            id: pool.id,
+            name: pool.name,
+            required: 0,
+            available: pool.techs * availablePerTechPerMonth * periodMonths
+          }
+        ])
+      );
+
+      let totalRequiredDays = 0;
+      let totalInstalls = 0;
+      let totalServiceVisits = 0;
+      let unassignedDemand = 0;
+      const rows = getRows();
+      const serviceRows = getServiceRows();
+      const workloadItems = [];
+
+      for (const row of rows) {
+        const rowTechDays = row.installDays * row.sales;
+        totalRequiredDays += rowTechDays;
+        totalInstalls += row.sales;
+        row.tr.querySelector('.row-tech-days').textContent = formatNumber(rowTechDays, 1);
+        workloadItems.push({
+          label: row.model || 'Unnamed install model',
+          load: rowTechDays
+        });
+
+        if (row.poolId && perPoolCapacity.has(row.poolId)) {
+          perPoolCapacity.get(row.poolId).required += rowTechDays;
+        } else {
+          unassignedDemand += rowTechDays;
+        }
+      }
+
+      for (const row of serviceRows) {
+        const rowTechDays = row.daysNeeded * row.projectedVisits;
+        totalRequiredDays += rowTechDays;
+        totalServiceVisits += row.projectedVisits;
+        row.tr.querySelector('.service-tech-days').textContent = formatNumber(rowTechDays, 1);
+        workloadItems.push({
+          label: row.serviceType ? `${row.serviceType} (service)` : 'Unnamed service visit',
+          load: rowTechDays
+        });
+
+        if (row.poolId && perPoolCapacity.has(row.poolId)) {
+          perPoolCapacity.get(row.poolId).required += rowTechDays;
+        } else {
+          unassignedDemand += rowTechDays;
+        }
+      }
+
+      const totalAvailableDays = [...perPoolCapacity.values()].reduce((sum, pool) => sum + pool.available, 0);
+      const utilization = totalAvailableDays > 0 ? (totalRequiredDays / totalAvailableDays) * 100 : 0;
+      const gap = totalAvailableDays - totalRequiredDays;
+      const recommendedTechs = availablePerTechPerMonth > 0
+        ? Math.ceil(totalRequiredDays / (availablePerTechPerMonth * periodMonths))
+        : 0;
+
+      const totalWorkOrders = totalInstalls + totalServiceVisits;
+      const workOrdersPerTech = technicians > 0 ? totalWorkOrders / technicians : 0;
+
+      fields.totalTechnicians.value = technicians;
+
+      output.requiredDays.textContent = formatNumber(totalRequiredDays, 1);
+      output.availableDays.textContent = formatNumber(totalAvailableDays, 1);
+
+      output.utilization.textContent = `${formatNumber(utilization, 1)}%`;
+      output.utilization.className = 'value ' + (utilization <= 85 ? 'status-good' : utilization <= 100 ? 'status-warn' : 'status-bad');
+
+      output.recommendedTechs.textContent = formatNumber(recommendedTechs, 0);
+      output.gapLabel.textContent = gap >= 0 ? 'Remaining Tech Days' : 'Needed Tech Days';
+      output.gap.textContent = formatNumber(Math.abs(gap), 1);
+      output.gap.className = 'value ' + (gap >= 0 ? 'status-good' : 'status-bad');
+
+      output.totalInstalls.textContent = formatNumber(totalInstalls, 0);
+  output.totalServiceVisits.textContent = formatNumber(totalServiceVisits, 0);
+  output.workOrdersPerTech.textContent = formatNumber(workOrdersPerTech, 1);
+
+      renderPoolSummary([...perPoolCapacity.values()], unassignedDemand);
+
+      renderInsights({
+        utilization,
+        gap,
+        recommendedTechs,
+        technicians,
+        rows,
+        serviceRows,
+        workloadItems,
+        totalInstalls,
+        totalServiceVisits,
+        unassignedDemand,
+        poolStats: [...perPoolCapacity.values()],
+        weeksOut,
+        periodMonths
+      });
+    }
+
+    function renderInsights(data) {
+      const insights = [];
+
+      if (data.weeksOut < 1) {
+        insights.push('Set at least 1 week out-of-field per month to protect PTO/training/admin time.');
+      }
+
+      if (data.utilization > 100) {
+        insights.push(`Demand exceeds capacity by ${formatNumber(Math.abs(data.gap), 1)} tech-days. Add technicians, extend planning horizon, or reduce install scope.`);
+      } else if (data.utilization > 90) {
+        insights.push('Utilization is tight. Consider a 10–15% schedule buffer to avoid spillover from delays.');
+      } else if (data.totalInstalls + data.totalServiceVisits > 0) {
+        insights.push('Capacity is healthy. Use spare bandwidth for preventive maintenance, cross-training, or backlog reduction.');
+      }
+
+      if (data.totalServiceVisits > 0) {
+        insights.push(`Service demand added: ${formatNumber(data.totalServiceVisits, 0)} projected service visits in this planning window.`);
+      }
+
+      if (data.recommendedTechs > data.technicians) {
+        insights.push(`Current plan suggests at least ${data.recommendedTechs} technicians for this demand window.`);
+      }
+
+      if (data.unassignedDemand > 0) {
+        insights.push(`There are ${formatNumber(data.unassignedDemand, 1)} unassigned tech-days. Assign those model rows to a trained pool for accurate pool-level load.`);
+      }
+
+      const overloadedPools = data.poolStats.filter(pool => pool.available > 0 && pool.required / pool.available > 1);
+      if (overloadedPools.length > 0) {
+        insights.push(`Overloaded pools: ${overloadedPools.map(pool => pool.name).join(', ')}. Rebalance assignments or increase technicians in those pools.`);
+      }
+
+      const biggest = [...data.workloadItems]
+        .sort((a, b) => b.load - a.load)[0];
+
+      if (biggest && biggest.load > 0) {
+        insights.push(`Largest workload driver: ${biggest.label} (${formatNumber(biggest.load, 1)} tech-days). Focus process improvements here first.`);
+      }
+
+      if (!insights.length) {
+        insights.push('Add machine models and projected sales to generate planning insights.');
+      }
+
+      output.insights.innerHTML = insights.map(i => `<li>${i}</li>`).join('');
+    }
+
+    document.getElementById('addModel').addEventListener('click', () => {
+      addRow();
+      calculate();
+    });
+
+    document.getElementById('addService').addEventListener('click', () => {
+      addServiceRow();
+      calculate();
+    });
+
+    document.getElementById('addPool').addEventListener('click', () => {
+      addPool('', 0, []);
+      calculate();
+    });
+
+    document.getElementById('clearAll').addEventListener('click', () => {
+      modelsBody.innerHTML = '';
+      addRow();
+      calculate();
+    });
+
+    document.getElementById('clearService').addEventListener('click', () => {
+      serviceBody.innerHTML = '';
+      addServiceRow();
+      calculate();
+    });
+
+    document.getElementById('loadExample').addEventListener('click', () => {
+      poolsBody.innerHTML = '';
+      modelsBody.innerHTML = '';
+
+      const poolCore = addPool('Core Team', 5, ['DTRX', 'GTXpro', 'GTXpro Bulk', 'GTX-300']);
+      const poolAdvanced = addPool('Advanced Team', 3, ['GTX-600', 'DL 2200', 'DL 2400', customTrainedModelToken]);
+
+      addRow('DTRX', 2.5, 12, poolCore);
+      addRow('GTXpro', 1.25, 22, poolCore);
+      addRow('DL 2400', 3.0, 8, poolAdvanced);
+      addServiceRow('Preventive Maintenance', 0.5, 18, poolCore);
+      addServiceRow('Emergency Repair', 1.25, 9, poolAdvanced);
+      calculate();
+    });
+
+    Object.values(fields).forEach(input => {
+      if (input.id === 'totalTechnicians') {
+        return;
+      }
+
+      input.addEventListener('input', calculate);
+      input.addEventListener('blur', () => {
+        if (input.id === 'weeksOut' && toNumber(input.value) < 1) {
+          input.value = 1;
+        }
+        calculate();
+      });
+    });
+
+    const defaultPool = addPool('General Pool', 8, []);
+    addRow('DTRX', 2.5, 12, defaultPool);
+    addRow('GTXpro', 1.25, 22, defaultPool);
+    addServiceRow('Preventive Maintenance', 0.5, 10, defaultPool);
+    calculate();
+  </script>
+</body>
+</html>
